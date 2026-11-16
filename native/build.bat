@@ -8,6 +8,8 @@ rem   build.bat model          -> only model_test; "plugin" and "fx" likewise
 rem   build.bat preview <dir>  -> draws the monitor, the broadcast card and the report into SVG files
 rem                               (tools\render_svgs.py makes PNGs)
 rem   build.bat shader         -> compiles fx\pulse.hlsl the way the launcher's build does (swofty postfx compile)
+rem The DLL is linked with its PDB (build\<name>.pdb, never packaged): /PDBALTPATH:%%_PDB%% keeps this PC's path out of
+rem the DLL. tools\crash_lab.py stores each version's PDB and names our frames in crash reports.
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 
@@ -29,7 +31,7 @@ if /i "%WHAT%"=="shader" goto shader
 
 call "%VSDIR%\VC\Auxiliary\Build\vcvars64.bat" >nul || exit /b 1
 if not exist build mkdir build
-set FLAGS=/nologo /std:c++latest /EHsc /O2 /MT /W3 /Zc:preprocessor /Zc:__cplusplus /utf-8 /permissive- /D_CRT_SECURE_NO_WARNINGS /DNOMINMAX /I include /Fobuild\
+set FLAGS=/nologo /std:c++latest /EHsc /O2 /MT /W3 /Zc:preprocessor /Zc:__cplusplus /utf-8 /permissive- /D_CRT_SECURE_NO_WARNINGS /DNOMINMAX /Z7 /I include /Fobuild\
 rem the addon's version, from the manifest, for the line it logs when it loads
 set "PVER=dev"
 for /f "tokens=2 delims=:, " %%v in ('findstr /c:"\"version\"" ..\swofty.json') do if "!PVER!"=="dev" set "PVER=%%~v"
@@ -56,7 +58,7 @@ if "%DLL%"=="1" set "SRC=!SRC! src\pulse.cpp"
 for %%t in (%TESTS%) do set "SRC=!SRC! tests\%%t_test.cpp"
 cl %FLAGS% /MP /c %SRC% || exit /b 1
 if "%DLL%"=="1" (
-    link /NOLOGO /DLL build\pulse.obj build\heart.obj /OUT:pulse.dll /IMPLIB:build\pulse.lib || exit /b 1
+    link /NOLOGO /DLL build\pulse.obj build\heart.obj /OUT:pulse.dll /IMPLIB:build\pulse.lib /DEBUG /PDB:build\pulse.pdb /PDBALTPATH:%%_PDB%% /OPT:REF /OPT:ICF /INCREMENTAL:NO || exit /b 1
     del /q pulse.exp 2>nul
     echo built %CD%\pulse.dll
 )

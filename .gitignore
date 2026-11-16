@@ -1,0 +1,8 @@
+# build output
+native/build/
+*.lib
+*.exp
+*.swoftyaddon
+dist/
+release/
+native/*.dll

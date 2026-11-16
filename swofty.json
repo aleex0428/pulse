@@ -1,0 +1,311 @@
+{
+  "schema_version": 1,
+  "id": "alexs.pulse",
+  "name": "PULSE",
+  "version": "0.1.0",
+  "author": "Alex Sánchez",
+  "description": "Feel the driver's heart: a heart rate that rises at the start, in a fight, after contact and under pressure, felt on screen (tunnel vision, heartbeat, G, impacts, fatigue) and shown on a bedside monitor, a TV biometrics card and a report.",
+  "license": "MIT",
+  "repository": "https://github.com/aleex0428/pulse",
+  "icon": "icons/pulse.png",
+  "kind": [
+    "native"
+  ],
+  "category": "shaders",
+  "compat": {
+    "game": "f1_25",
+    "launcher": ">=1.9.10",
+    "platforms": [
+      "steam"
+    ]
+  },
+  "requires": [
+    {
+      "id": "swofty.core",
+      "version": ">=0.1.0"
+    }
+  ],
+  "experimental_features": [
+    "overlay",
+    "telemetry",
+    "postfx"
+  ],
+  "options": [
+    {
+      "id": "effects",
+      "type": "toggle",
+      "label": "Screen effects",
+      "description": "Feel the heart on screen: tunnel vision when it races, the heartbeat at the edges, G greyout in fast corners, the flash and blur of an impact, and fatigue late in a long race.",
+      "default": true,
+      "binds": "native"
+    },
+    {
+      "id": "effects_strength",
+      "type": "slider",
+      "label": "Effects strength",
+      "description": "How strong the screen effects are. Changes straight away in game.",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "default": 60,
+      "binds": "native"
+    },
+    {
+      "id": "effects_style",
+      "type": "choice",
+      "label": "Effects style",
+      "description": "Comfort: no blur, flash, heartbeat throb or grain, a softer tunnel vision, and fatigue only dims the picture a little. For anyone who feels unwell with moving edges.",
+      "values": [
+        {
+          "value": "full",
+          "label": "Full"
+        },
+        {
+          "value": "comfort",
+          "label": "Comfort"
+        }
+      ],
+      "default": "full",
+      "binds": "native"
+    },
+    {
+      "id": "screen_motion",
+      "type": "choice",
+      "label": "Screen motion",
+      "description": "Reduced halves the throb and blur and eases the tunnel in and out. Static: nothing throbs, flashes, blurs or crawls; the edges only darken, slowly.",
+      "values": [
+        {
+          "value": "full",
+          "label": "Full"
+        },
+        {
+          "value": "reduced",
+          "label": "Reduced"
+        },
+        {
+          "value": "static",
+          "label": "Static"
+        }
+      ],
+      "default": "full",
+      "binds": "native"
+    },
+    {
+      "id": "fx_tunnel",
+      "type": "toggle",
+      "label": "Tunnel vision",
+      "description": "The edges darken and lose colour when the heart is in the red zone.",
+      "default": true,
+      "binds": "native"
+    },
+    {
+      "id": "fx_heartbeat",
+      "type": "toggle",
+      "label": "Heartbeat",
+      "description": "A soft throb at the edges, in time with the heart, when it beats fast.",
+      "default": true,
+      "binds": "native"
+    },
+    {
+      "id": "fx_gforce",
+      "type": "toggle",
+      "label": "G greyout",
+      "description": "The outside edge darkens in fast corners and the top edge under hard braking.",
+      "default": true,
+      "binds": "native"
+    },
+    {
+      "id": "fx_impact",
+      "type": "toggle",
+      "label": "Impacts",
+      "description": "A flash and a moment of blur after contact, and a shorter blur after a spin or a trip off the road.",
+      "default": true,
+      "binds": "native"
+    },
+    {
+      "id": "fx_fatigue",
+      "type": "toggle",
+      "label": "Fatigue",
+      "description": "Late in a long, hard race the picture turns a little softer and grainier.",
+      "default": true,
+      "binds": "native"
+    },
+    {
+      "id": "monitor_corner",
+      "type": "choice",
+      "label": "Monitor",
+      "description": "Where the heart monitor sits on screen. Hidden keeps it away until you press the monitor key.",
+      "values": [
+        {
+          "value": "bottom_left",
+          "label": "Bottom left"
+        },
+        {
+          "value": "top_left",
+          "label": "Top left"
+        },
+        {
+          "value": "top_right",
+          "label": "Top right"
+        },
+        {
+          "value": "bottom_right",
+          "label": "Bottom right"
+        },
+        {
+          "value": "hidden",
+          "label": "Hidden"
+        }
+      ],
+      "default": "bottom_left",
+      "binds": "native"
+    },
+    {
+      "id": "monitor_size",
+      "type": "choice",
+      "label": "Monitor size",
+      "description": "How big the monitor, the biometrics card and the report are.",
+      "values": [
+        {
+          "value": "small",
+          "label": "Small"
+        },
+        {
+          "value": "normal",
+          "label": "Normal"
+        },
+        {
+          "value": "large",
+          "label": "Large"
+        }
+      ],
+      "default": "normal",
+      "binds": "native"
+    },
+    {
+      "id": "monitor_key",
+      "type": "choice",
+      "label": "Monitor key",
+      "description": "Shows and hides the monitor, and closes the report (Esc closes it too). Pick another if an addon of yours uses F9.",
+      "values": [
+        {
+          "value": "f9",
+          "label": "F9"
+        },
+        {
+          "value": "f4",
+          "label": "F4"
+        },
+        {
+          "value": "f5",
+          "label": "F5"
+        },
+        {
+          "value": "f8",
+          "label": "F8"
+        },
+        {
+          "value": "f10",
+          "label": "F10"
+        },
+        {
+          "value": "f11",
+          "label": "F11"
+        },
+        {
+          "value": "off",
+          "label": "None"
+        }
+      ],
+      "default": "f9",
+      "binds": "native"
+    },
+    {
+      "id": "tv_card",
+      "type": "toggle",
+      "label": "Biometrics card",
+      "description": "In a race, a TV-style card compares your heart with your rival's when you fight for a few seconds or touch.",
+      "default": true,
+      "binds": "native"
+    },
+    {
+      "id": "report",
+      "type": "toggle",
+      "label": "Pulse report",
+      "description": "When you take the flag, your race ends or a session ends: your peak and average heart rate, the time in each zone, your stamina and a zone control score.",
+      "default": true,
+      "binds": "native"
+    },
+    {
+      "id": "report_position",
+      "type": "choice",
+      "label": "Report position",
+      "description": "Where the Pulse report shows. Left or right keep the middle of the screen free for the game's own end of race (driver of the day, the podium).",
+      "values": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        },
+        {
+          "value": "centre",
+          "label": "Centre"
+        }
+      ],
+      "default": "left",
+      "binds": "native"
+    },
+    {
+      "id": "fx_key",
+      "type": "choice",
+      "label": "Effects key",
+      "description": "A key that switches the screen effects off and on while you drive.",
+      "values": [
+        "None",
+        "F7",
+        "F8",
+        "F10",
+        "Home",
+        "End"
+      ],
+      "default": "None",
+      "binds": "native"
+    },
+    {
+      "id": "diagnostics",
+      "type": "toggle",
+      "label": "Diagnostics in the log",
+      "description": "Writes what PULSE reads from the game to loader.log (a line a second for two minutes, then every 10 s). Leave it on if you send a bug report.",
+      "default": true,
+      "binds": "native"
+    }
+  ],
+  "postfx": [
+    {
+      "shader": "fx/pulse.hlsl",
+      "name": "pulse",
+      "enabled": "{{effects}}",
+      "when": {
+        "skip": [
+          "paused",
+          "replay",
+          "photo",
+          "menu",
+          "cutscene",
+          "spectating"
+        ]
+      }
+    }
+  ],
+  "postfx_toggle": "{{fx_key}}",
+  "operations": {
+    "native": [
+      {
+        "dll": "native/pulse.dll"
+      }
+    ]
+  }
+}

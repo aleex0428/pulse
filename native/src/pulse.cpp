@@ -80,8 +80,7 @@ void read_options()
     s.report = option<bool>("report");
     s.diagnostics = option<bool>("diagnostics");
     g_session.configure(s);
-    pulse::monitor::set_corner(option<std::string>("monitor_corner"));
-    pulse::monitor::set_size(option<std::string>("monitor_size"));
+    // 0.1.1: where the monitor and the card sit and how big they are is the game's HUD editor's (hud/slots.json)
     pulse::monitor::set_key(option<std::string>("monitor_key"));
     pulse::monitor::set_report_at(option<std::string>("report_position"));
 }
@@ -120,8 +119,9 @@ SWOFTY_ON_LOAD
         read_options();
         g_session.set_sink(send_fx);
     }
-    log("[pulse] live state %s, screen effect data %s, overlay %s", live::available() ? "on" : "not yet",
-        postfx::available() ? "available" : "unavailable", overlay::available() ? "available" : "unavailable");
+    log("[pulse] live state %s, screen effect data %s, overlay %s, hud slots %s", live::available() ? "on" : "not yet",
+        postfx::available() ? "available" : "unavailable", overlay::available() ? "available" : "unavailable",
+        swofty::hud_slot::available() ? "available" : "unavailable (the default boxes)");
     pulse::monitor::g_session = &g_session;
     events::on_frame(frame);
     if (overlay::available())

@@ -1,6 +1,6 @@
 # PULSE
 
-`alexs.pulse` 0.1.0, by Alex Sánchez. MIT licence.
+`alexs.pulse` 0.1.1, by Alex Sánchez. MIT licence.
 
 Feel the driver's heart. PULSE gives every driver a heart rate that lives with the race: it climbs on the grid,
 surges when the lights go out, rises in a fight and jumps after contact, and comes down behind the safety car. You
@@ -46,7 +46,7 @@ menus or cutscenes, or while you watch another car. Every effect is off at exact
 every effect switched off, the picture is untouched.
 
 ### The monitor
-A bedside monitor in a corner of the screen, with:
+A bedside monitor, bottom left by default, with:
 - the heart rate, with a heart that beats with it;
 - the zone;
 - an ECG trace sweeping across a phosphor grid;
@@ -54,8 +54,10 @@ A bedside monitor in a corner of the screen, with:
 
 Each zone has its own mark as well as its colour (a circle, a square, a diamond, a warning triangle). It blinks red
 in the red zone. While you watch another car, it follows that car, with its name or team. While a session is on but
-the car can't be read, it says **NO SIGNAL**. With the Small size, or on a 720p screen, it takes a compact layout:
+the car can't be read, it says **NO SIGNAL**. Made small, or on a 720p screen, it takes a compact layout:
 the number and the zone big, the trace under them. **F9** (or the **Monitor key** setting) shows and hides it.
+
+The monitor and the DRIVER BIOMETRICS card are entries of the game's own **HUD editor** (Settings > HUD, from launcher 1.10.21): move them, resize them, change their opacity or switch them off there, and the game keeps where you put them. They only show while the game shows its race HUD.
 
 ### The DRIVER BIOMETRICS card
 In a race, when you fight with a car for a few seconds, or touch one, a TV-style card compares your heart with your
@@ -91,12 +93,13 @@ back within 30 seconds takes both spikes back.
   half the throb and blur, the tunnel eases in and out; Static: nothing throbs, flashes, blurs or crawls) and each
   effect on its own: **Tunnel vision**, **Heartbeat**, **G greyout**, **Impacts**, **Fatigue**.
 - **Effects key:** a key that switches the screen effects off and on while you drive (None by default).
-- **Monitor** (bottom left, top left, top right, bottom right or hidden), **Monitor size** and **Monitor key**.
+- **Monitor key** (where the monitor and the card sit is the game's HUD editor's).
 - **Biometrics card**, **Pulse report** and **Report position** (left, right or centre).
 - **Diagnostics in the log:** what PULSE reads from the game, in `loader.log`.
 
 ## Needs
-- Swofty Launcher 1.9.10 or later (the live state and the screen effect's data from code). Steam.
+- Swofty Launcher 1.10.21 or later (the live state, the screen effect's data from code and the HUD editor's slots).
+  Steam. Checked on 24 Nov with Swofty Launcher 1.10.35.
 - The experimental features `overlay`, `telemetry` and `postfx`.
 
 ## Build

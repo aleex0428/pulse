@@ -19,6 +19,7 @@
 #include <swofty/mixin.hpp>
 
 #include <swofty/fake_live.hpp>
+#include <swofty/hud_slot.hpp>
 
 #include "../src/session.hpp"
 
@@ -779,6 +780,20 @@ void identity()
         g.drive(5);
         check(g.session.view().card.rival.label == "FERRARI", "UDP that does not match: the team badge, not a wrong name");
     }
+    {
+        // 0.1.1: the launcher's own driver name comes first, whatever UDP says
+        Grid g(15);
+        g.live.set_driver_name(1, "Bortoleto");
+        g.drive(5, 0);
+        g.session.race_start();
+        g.spread();
+        g.drive(60);
+        g.place(1, -30);
+        g.udp_shift = 0;
+        g.udp_off = 5;
+        g.drive(5);
+        check(g.session.view().card.rival.label == "BORTOLETO", "the launcher's driver name first");
+    }
     g_udp = false;
     g_api.telemetry = nullptr;
 }
@@ -803,11 +818,77 @@ void time_trial()
     check(!g.session.view().card.show, "time trial: no card");
 }
 
+// 0.1.1: the monitor and the card follow the game's race HUD, and sit in their HUD editor boxes (hud/slots.json)
+void hud_and_slots()
+{
+    {
+        Grid g(15);
+        g.session.race_start();
+        g.drive(2);
+        check(g.session.view().live && !g.session.view().hud_hidden, "the core can't tell about the HUD: shown");
+        auto &s = g.live.session();
+        s.have |= SWOFTY_LIVE_SHAVE_HUD;
+        s.hud_visible = 0;
+        g.drive(0.5f);
+        check(g.session.view().hud_hidden, "the game hides its race HUD (a replay, a cutscene): hidden");
+        s.hud_visible = 1;
+        g.drive(0.5f);
+        check(!g.session.view().hud_hidden, "the race HUD is back: shown");
+    }
+    namespace hs = swofty::hud_slot;
+    // the same as hud/slots.json
+    const hs::Slot monitor{"monitor", "PULSE monitor", 0.03f, 0.70f, 0.1656f, 0.1037f, hs::Anchor::bottom_left};
+    const hs::Slot card{"card", "PULSE card", 0.34375f, 0.06f, 0.3125f, 0.1222f, hs::Anchor::top};
+    SwoftyHudSlotState none{};
+    hs::Placement at = hs::place(monitor, none, 1920, 1080);
+    check(std::fabs(at.x - 57.6f) < 0.5f && std::fabs(at.y - 756) < 0.5f && std::fabs(at.w - 318) < 0.5f &&
+              std::fabs(at.h - 112) < 0.5f && at.visible && !at.live,
+          "monitor slot, no core: its default box, 318 x 112 at 1080p, bottom left");
+    at = hs::place(monitor, none, 3840, 2160);
+    check(std::fabs(at.h - 224) < 1 && std::fabs(at.y - 1512) < 1, "monitor slot at 4K: twice the size, same place");
+    hs::Placement c = hs::place(card, none, 1920, 1080);
+    check(std::fabs(c.x + c.w / 2 - 960) < 0.5f && std::fabs(c.w - 600) < 0.5f && std::fabs(c.h - 132) < 0.5f,
+          "card slot, no core: 600 x 132, centred at the top");
+    // the player moved it to the top right and made it 1.5 times bigger
+    SwoftyHudSlotState moved{};
+    moved.found = 1;
+    moved.enabled = 1;
+    moved.scale = 1.5f;
+    moved.opacity = 1;
+    float ux = 0, uy = 0;
+    hs::default_offset(monitor, ux, uy);
+    moved.x = ux + 16.0f;
+    moved.y = uy + 6.0f;
+    at = hs::place(monitor, moved, 1920, 1080);
+    check(at.live && std::fabs(at.h - 168) < 0.5f && at.x > 1400 && at.y < 300,
+          "the player's place and scale: top right, 1.5 times bigger");
+    moved.enabled = 0;
+    check(!hs::place(monitor, moved, 1920, 1080).visible, "switched off in the editor: not drawn");
+    // while the editor is open the box is the editor's own selection box
+    SwoftyHudSlotState editing{};
+    editing.found = 1;
+    editing.enabled = 1;
+    editing.editor_open = 1;
+    editing.scale = 1;
+    editing.has_box = 1;
+    editing.box[0] = -9.0f;
+    editing.box[1] = -4.0f;
+    editing.box[2] = -6.0f;
+    editing.box[3] = -3.0f;
+    at = hs::place(monitor, editing, 1920, 1080);
+    check(at.editor_open && std::fabs(at.x - 60) < 0.5f && std::fabs(at.w - 300) < 0.5f && std::fabs(at.h - 100) < 0.5f,
+          "editor open: the selection box the player drags");
+}
+
 void badges()
 {
     check(team_of_badge("ferrari_2026") == "FERRARI", "badge: ferrari_2026");
     check(team_of_badge("red_bull_racing_2025") == "RED BULL RACING", "badge: red_bull_racing_2025");
     check(team_of_badge("haas") == "HAAS", "badge without a year");
+    // 0.1.1 (players' reports): the game's old internal names read as the teams race now
+    check(team_of_badge("alfa_romeo_2025") == "SAUBER" && team_of_badge("toro_rosso") == "RACING BULLS" &&
+              team_of_badge("force_india_2026") == "ASTON MARTIN" && team_of_badge("lotus") == "ALPINE",
+          "badge: old internal names (Sauber was ALFA ROMEO)");
     check(kind_of_type(3) == Kind::practice && kind_of_type(8) == Kind::qualifying && kind_of_type(12) == Kind::qualifying &&
               kind_of_type(16) == Kind::race && kind_of_type(18) == Kind::time_trial,
           "session types");
@@ -833,6 +914,7 @@ int main(int argc, char **argv)
     identity();
     short_sessions();
     time_trial();
+    hud_and_slots();
     badges();
     if (g_failed) {
         std::printf("plugin_test: %d of %d checks FAILED\n", g_failed, g_checks);

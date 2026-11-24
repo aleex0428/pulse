@@ -1,0 +1,14 @@
+{
+  "hud.slot": {
+    "monitor": {
+      "name": "PULSE monitor",
+      "rect": [0.03, 0.70, 0.1656, 0.1037],
+      "anchor": "bottom_left"
+    },
+    "card": {
+      "name": "PULSE card",
+      "rect": [0.34375, 0.06, 0.3125, 0.1222],
+      "anchor": "top"
+    }
+  }
+}

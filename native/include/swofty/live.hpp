@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include <swofty/live_images.h>
+#include <array>
 #include <atomic>
 #include <cstdint>
 #include <optional>
@@ -29,6 +31,7 @@ namespace swofty::live {
 using Car = SwoftyLiveCar;
 using Session = SwoftyLiveSession;
 using Turn = SwoftyLiveTurn;
+using CarDetail = SwoftyLiveCarDetail;
 
 constexpr uint32_t version = SWOFTY_LIVE_VERSION;
 constexpr uint32_t max_cars = SWOFTY_LIVE_MAX_CARS;
@@ -145,6 +148,57 @@ inline std::optional<std::string> team_badge(uint32_t vehicle)
     return std::string(key);
 }
 
+// The driver name the game shows for the car (the player's name for a human), UTF-8. Empty on a core whose live table
+// is older than version 2 or while the driver names group is off.
+inline std::optional<std::string> driver_name(uint32_t vehicle)
+{
+    auto t = detail::table();
+    char name[128] = {};
+    if (!t || t->version < 2 || !t->driver_name || t->driver_name(vehicle, name, sizeof name) != SWOFTY_ASSET_OK)
+        return std::nullopt;
+    return std::string(name);
+}
+
+inline std::optional<std::string> team_badge_texture(uint32_t vehicle)
+{
+    auto t = detail::table();
+    char path[96] = {};
+    if (!t || t->version < 3 || !t->team_badge_texture ||
+        t->team_badge_texture(vehicle, path, sizeof path) != SWOFTY_ASSET_OK)
+        return std::nullopt;
+    return std::string(path);
+}
+
+// The fitted visual compound's compact icon, using the effective GameDB template.
+// Empty on cores older than version 5 or when the mapping is unavailable.
+inline std::optional<std::string> tyre_icon_texture(uint32_t vehicle)
+{
+    const auto *t = detail::table();
+    char path[160] = {};
+    if (!t || t->version < 5 || !t->tyre_icon_texture ||
+        t->tyre_icon_texture(vehicle, path, sizeof path) != SWOFTY_ASSET_OK)
+        return std::nullopt;
+    return std::string(path);
+}
+
+// More of the car's state from the same snapshot: starting grid slot, tyre wear, tyre age and stint laps, lap and sector
+// times. Empty on cores older than version 6; each value's have bit says whether it was read.
+inline std::optional<CarDetail> car_detail(uint32_t vehicle)
+{
+    const auto *t = detail::table();
+    CarDetail d{};
+    if (!t || t->version < 6 || !t->car_detail || t->car_detail(vehicle, &d) != SWOFTY_ASSET_OK)
+        return std::nullopt;
+    return d;
+}
+
+// Caller-owned image bytes; no disk files or table presentation policy.
+inline const SwoftyLiveImages *images()
+{
+    const auto *t = detail::table();
+    return t && t->version >= 4 && t->images ? t->images() : nullptr;
+}
+
 inline std::optional<uint64_t> frame()
 {
     auto t = detail::table();
@@ -156,6 +210,7 @@ inline std::optional<uint64_t> frame()
 
 inline bool has(const Car &c, uint64_t bit) { return (c.have & bit) != 0; }
 inline bool has(const Session &s, uint64_t bit) { return (s.have & bit) != 0; }
+inline bool has(const CarDetail &d, uint64_t bit) { return (d.have & bit) != 0; }
 
 inline bool is_player(const Car &c) { return (c.flags & SWOFTY_LIVE_CAR_PLAYER) != 0; }
 inline bool is_watched(const Car &c) { return (c.flags & SWOFTY_LIVE_CAR_WATCHED) != 0; }
@@ -185,6 +240,21 @@ inline std::optional<int32_t> gap_leader_ms(const Car &c)
     return has(c, SWOFTY_LIVE_HAVE_GAP_LEADER) && c.gap_leader_ms != no_gap ? std::optional<int32_t>(c.gap_leader_ms) : std::nullopt;
 }
 
+inline std::optional<uint8_t> grid_position(const CarDetail &d)
+{
+    return has(d, SWOFTY_LIVE_HAVE_GRID) ? std::optional<uint8_t>(d.grid_position) : std::nullopt;
+}
+
+inline std::optional<uint32_t> last_lap_ms(const CarDetail &d)
+{
+    return has(d, SWOFTY_LIVE_HAVE_LAP_TIMES) && d.last_lap_ms ? std::optional<uint32_t>(d.last_lap_ms) : std::nullopt;
+}
+
+inline std::optional<uint32_t> best_lap_ms(const CarDetail &d)
+{
+    return has(d, SWOFTY_LIVE_HAVE_LAP_TIMES) && d.best_lap_ms ? std::optional<uint32_t>(d.best_lap_ms) : std::nullopt;
+}
+
 inline bool in_pit(const Car &c)
 {
     return has(c, SWOFTY_LIVE_HAVE_PIT) && c.pit_state >= 2 && c.pit_state <= 15;
@@ -198,6 +268,110 @@ inline std::optional<uint8_t> pit_status(const Car &c)
 inline std::optional<uint8_t> pit_stops(const Car &c)
 {
     return has(c, SWOFTY_LIVE_HAVE_PIT_LANE) ? std::optional<uint8_t>(c.pit_stops) : std::nullopt;
+}
+
+enum class DriverStatus : uint8_t { garage = 0, flying_lap = 1, in_lap = 2, out_lap = 3, on_track = 4 };
+
+// The session clock and lap count, from the game's UDP Session packet (see live.md for each field's source).
+inline std::optional<float> time_left_s(const Session &s)
+{
+    return has(s, SWOFTY_LIVE_SHAVE_TIME_LEFT) ? std::optional<float>(s.time_left_s) : std::nullopt;
+}
+
+inline std::optional<uint32_t> total_laps(const Session &s)
+{
+    return has(s, SWOFTY_LIVE_SHAVE_TOTAL_LAPS) ? std::optional<uint32_t>(s.total_laps) : std::nullopt;
+}
+
+struct FastestLap {
+    uint32_t vehicle;
+    uint32_t lap_ms;
+};
+
+inline std::optional<FastestLap> fastest_lap(const Session &s)
+{
+    if (!has(s, SWOFTY_LIVE_SHAVE_FASTEST_LAP) || !s.fastest_lap_ms)
+        return std::nullopt;
+    return FastestLap{s.fastest_lap_vehicle, s.fastest_lap_ms};
+}
+
+inline std::optional<uint8_t> safety_car_phase(const Session &s)
+{
+    return has(s, SWOFTY_LIVE_SHAVE_SAFETY_CAR_PHASE) ? std::optional<uint8_t>(s.safety_car_phase) : std::nullopt;
+}
+
+inline std::optional<bool> drs_enabled(const Session &s)
+{
+    return has(s, SWOFTY_LIVE_SHAVE_DRS) ? std::optional<bool>(s.drs_enabled != 0) : std::nullopt;
+}
+
+inline std::optional<uint8_t> start_lights(const Session &s)
+{
+    return has(s, SWOFTY_LIVE_SHAVE_START_LIGHTS) ? std::optional<uint8_t>(s.start_lights) : std::nullopt;
+}
+
+// Whether the game shows its race HUD now: false through menus, the track intro, the grid, cutscenes,
+// replays, photo mode and the pause menu. Empty when the core cannot tell (no flow states seen).
+inline std::optional<bool> hud_visible(const Session &s)
+{
+    return has(s, SWOFTY_LIVE_SHAVE_HUD) ? std::optional<bool>(s.hud_visible != 0) : std::nullopt;
+}
+
+// What hides the race HUD, SWOFTY_LIVE_HUD_* bits; 0 while it shows or when the bit is clear.
+inline uint8_t hud_hidden_by(const Session &s)
+{
+    return has(s, SWOFTY_LIVE_SHAVE_HUD) ? s.hud_hidden_by : 0;
+}
+
+struct PitWindow {
+    uint8_t ideal_lap, latest_lap, rejoin_position;
+};
+
+inline std::optional<PitWindow> pit_window(const Session &s)
+{
+    if (!has(s, SWOFTY_LIVE_SHAVE_PIT_WINDOW))
+        return std::nullopt;
+    return PitWindow{s.pit_window_ideal_lap, s.pit_window_latest_lap, s.pit_rejoin_position};
+}
+
+inline std::optional<bool> drs_allowed(const CarDetail &d)
+{
+    return has(d, SWOFTY_LIVE_HAVE_DRS_ALLOWED) ? std::optional<bool>(d.drs_allowed != 0) : std::nullopt;
+}
+
+inline std::optional<bool> pit_limiter(const CarDetail &d)
+{
+    return has(d, SWOFTY_LIVE_HAVE_PIT_LIMITER) ? std::optional<bool>(d.pit_limiter != 0) : std::nullopt;
+}
+
+inline std::optional<int8_t> fia_flag(const CarDetail &d)
+{
+    return has(d, SWOFTY_LIVE_HAVE_FIA_FLAG) ? std::optional<int8_t>(d.fia_flag) : std::nullopt;
+}
+
+inline std::optional<DriverStatus> driver_status(const CarDetail &d)
+{
+    return has(d, SWOFTY_LIVE_HAVE_DRIVER_STATUS) && d.driver_status <= 4
+               ? std::optional<DriverStatus>(static_cast<DriverStatus>(d.driver_status))
+               : std::nullopt;
+}
+
+inline std::optional<uint8_t> race_number(const CarDetail &d)
+{
+    return has(d, SWOFTY_LIVE_HAVE_IDENTITY) ? std::optional<uint8_t>(d.race_number) : std::nullopt;
+}
+
+inline std::optional<uint32_t> team_colour(const CarDetail &d)
+{
+    return has(d, SWOFTY_LIVE_HAVE_IDENTITY) && d.team_colour ? std::optional<uint32_t>(d.team_colour) : std::nullopt;
+}
+
+// The car's best time in each sector this session, 0 for a sector it has no time in yet.
+inline std::optional<std::array<uint32_t, 3>> sector_bests(const CarDetail &d)
+{
+    if (!has(d, SWOFTY_LIVE_HAVE_SECTOR_BESTS))
+        return std::nullopt;
+    return std::array<uint32_t, 3>{d.personal_best_sector_ms[0], d.personal_best_sector_ms[1], d.personal_best_sector_ms[2]};
 }
 
 inline GameMode game_mode(const Session &s)

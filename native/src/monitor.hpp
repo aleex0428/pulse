@@ -6,6 +6,7 @@
 // monitor, black glass, phosphor green, amber and red alarms. Each zone has its own shape as well as its colour.
 // Vector calls only.
 #pragma once
+#include <swofty/hud_slot.hpp>
 #include <swofty/overlay.hpp>
 
 #include "heart.hpp"
@@ -451,17 +452,24 @@ inline void card_at(ov::Paint *p, float W, float H, float k, float *x, float *y)
     *y = safe.y + 34 * k;
 }
 
-inline void draw_card(ov::Paint *p, const Card &c, float W, float H, float k_in, float clock)
+// at: the card's top-left (its HUD editor box, 0.1.1), with k_in already the box's scale; null: the old place, top
+// centre (the previews)
+inline void draw_card(ov::Paint *p, const Card &c, float W, float H, float k_in, float clock, const float *at = nullptr)
 {
     float in = ease_out(c.age / 0.45f);
     float out = std::clamp((Session::kCardSeconds - c.age) / 0.45f, 0.0f, 1.0f);
     float a = std::min(in, out);
     if (a <= 0)
         return;
-    float k = panel_scale(k_in);
+    float k = at ? k_in : panel_scale(k_in);
     float w = kCardW * k, h = kCardH * k;
     float x = 0, y = 0;
-    card_at(p, W, H, k, &x, &y);
+    if (at) {
+        x = at[0];
+        y = at[1];
+    } else {
+        card_at(p, W, H, k, &x, &y);
+    }
     y -= (1 - in) * 24 * k;
     ov::OpacityScope fade(p, a);
     ov::rect(p, x, y, w, h, kPanel);
@@ -662,16 +670,130 @@ inline void monitor_at(ov::Paint *p, Corner c, float k, float *x, float *y, bool
     *y = bottom ? safe.y + safe.h - h - kMonitorLift * k : safe.y;
 }
 
+// ---- 0.1.1: the monitor and the card are entries of the game's HUD editor ----
+// The launcher's hud.slot (1.10.21, the OSD the Addon Browser asks overlays to use): the player moves, scales and
+// switches them off in the game's own HUD editor, and the game keeps where they are. The same ids, rects and anchors
+// as hud/slots.json. Without the core's export (an older launcher) both stay in their default boxes.
+namespace hs = swofty::hud_slot;
+// bottom left, well above the edge (clear of the game's bottom readouts and the road ahead), 318 x 112 at 1080p
+inline constexpr hs::Slot kMonitorSlot{"monitor", "PULSE monitor", 0.03f, 0.70f, 0.1656f, 0.1037f, hs::Anchor::bottom_left};
+// top centre, 600 x 132 at 1080p
+inline constexpr hs::Slot kCardSlot{"card", "PULSE card", 0.34375f, 0.06f, 0.3125f, 0.1222f, hs::Anchor::top};
+
+// the game's opacity, 0..1 (a percentage taken as one, to be safe)
+inline float slot_opacity(const hs::Placement &at)
+{
+    float o = at.opacity > 1.5f ? at.opacity / 100.0f : at.opacity;
+    return std::clamp(o, 0.0f, 1.0f);
+}
+
+// the monitor in its box: its height sets the scale; a small box or a short screen takes the compact layout
+inline void draw_monitor_in(ov::Paint *p, const View &v, const hs::Placement &at, float H)
+{
+    if (!at.visible || at.w <= 0 || at.h <= 0)
+        return;
+    float k = at.h / kMonH;
+    bool compact = H <= 800 || k < 0.8f;
+    if (compact)
+        k = at.h / kMiniH;
+    ov::OpacityScope fade(p, slot_opacity(at));
+    draw_monitor(p, v, at.x, at.y, k, compact);
+}
+
+inline void draw_card_in(ov::Paint *p, const Card &c, const hs::Placement &at, float W, float H, float clock)
+{
+    if (!at.visible || at.w <= 0 || at.h <= 0)
+        return;
+    float pos[2] = {at.x, at.y};
+    ov::OpacityScope fade(p, slot_opacity(at));
+    draw_card(p, c, W, H, std::max(at.h / kCardH, 0.5f), clock, pos);
+}
+
+// what the editor shows in the boxes while the player places them: a heart in the zone, a fight
+inline View sample_view(float clock)
+{
+    View v;
+    v.live = true;
+    v.signal = true;
+    v.bpm = 168;
+    v.zone = zone_of(v.bpm);
+    v.fatigue = 0.2f;
+    v.clock = clock;
+    v.phase_beat = float(std::fmod(clock * v.bpm / 60.0f, 1.0f));
+    v.subject = "YOU";
+    return v;
+}
+
+inline Card sample_card()
+{
+    Card c;
+    c.show = true;
+    c.age = 1.0f;
+    c.title = "WHEEL TO WHEEL";
+    c.mode = "ATTACKING";
+    c.you.label = "YOU";
+    c.you.position = 4;
+    c.you.bpm = 176;
+    c.you.zone = zone_of(c.you.bpm);
+    c.rival.label = "RIVAL";
+    c.rival.position = 3;
+    c.rival.bpm = 169;
+    c.rival.zone = zone_of(c.rival.bpm);
+    c.rival.ecg_phase = 0.4f;
+    return c;
+}
+
+// the editor rows' names, once the core knows the slots; the slots' state in the log when it changes
+inline void name_slots()
+{
+    static std::atomic<bool> named_monitor{false}, named_card{false};
+    if (!named_monitor.load() && hs::declare(kMonitorSlot) == hs::Result::ok)
+        named_monitor = true;
+    if (!named_card.load() && hs::declare(kCardSlot) == hs::Result::ok)
+        named_card = true;
+}
+
+inline const char *slot_result(hs::Result r)
+{
+    return r == hs::Result::ok ? "ok" : r == hs::Result::no_slot ? "not loaded yet" : "unavailable";
+}
+
+inline hs::Placement slot_place(const hs::Slot &s, float W, float H, std::atomic<int> &last)
+{
+    hs::Placement at;
+    hs::Result r = hs::get(s, W, H, at);
+    if (int(r) != last.exchange(int(r)))
+        swofty::log("[pulse] hud slot %s: %s%s", s.id, slot_result(r),
+                    r == hs::Result::ok ? "" : " (its default box)");
+    return at;
+}
+
+inline double wall_seconds()
+{
+    return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
 // The overlay's paint callback.
 inline void paint(ov::Paint *p, void *)
 {
     if (!g_session)
         return;
     View v = g_session->view();
-    if (v.paused)
-        return;
     float W = 0, H = 0;
     ov::size(p, &W, &H);
+    static std::atomic<int> monitor_state{-1}, card_state{-1};
+    name_slots();
+    hs::Placement mon_at = slot_place(kMonitorSlot, W, H, monitor_state);
+    hs::Placement card_box = slot_place(kCardSlot, W, H, card_state);
+    // the game's HUD editor is open: a preview of both, in the boxes the player moves (paused or not)
+    if (mon_at.editor_open || card_box.editor_open) {
+        float clock = float(std::fmod(wall_seconds(), 1000.0));
+        draw_monitor_in(p, sample_view(clock), mon_at, H);
+        draw_card_in(p, sample_card(), card_box, W, H, clock);
+        return;
+    }
+    if (v.paused)
+        return;
     float k = ov::ui_scale(p) * g_size.load();
     ov::Input in = ov::input(p);
     // a pad's buttons put the report's footer in pad mode; a key or a click takes it back
@@ -698,17 +820,13 @@ inline void paint(ov::Paint *p, void *)
         draw_report(p, v.report, W, H, k, v.clock, g_pad.load());
         return;
     }
-    if (!v.live)
+    // 0.1.1: only while the game shows its race HUD (not in menus, replays, cutscenes or photo mode)
+    if (!v.live || v.hud_hidden)
         return;
-    if (g_shown.load()) {
-        bool compact = compact_for(H);
-        float x = 0, y = 0;
-        Corner c = Corner(g_corner.load());
-        monitor_at(p, c == Corner::hidden ? Corner::bottom_left : c, k, &x, &y, compact);
-        draw_monitor(p, v, x, y, k, compact);
-    }
+    if (g_shown.load())
+        draw_monitor_in(p, v, mon_at, H);
     if (v.card.show && !v.spectating)
-        draw_card(p, v.card, W, H, k, v.clock);
+        draw_card_in(p, v.card, card_box, W, H, v.clock);
 }
 
 } // namespace pulse::monitor

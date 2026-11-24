@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1
+- **The monitor and the card are in the game's HUD editor** (the launcher's HUD slots, 1.10.21): move them, resize them, change their opacity or switch them off there like any other part of the HUD, and the game keeps where you put them. While the editor is open both show a preview. The Monitor and Monitor size settings are gone; the monitor key still shows and hides it.
+- The monitor and the card only show while the game shows its race HUD: not in replays, cutscenes, photo mode or menus.
+- Needs Swofty Launcher 1.10.21 or later. SDK headers updated to the launcher 1.10.35.
+- From players' reports: the biometrics card names a rival by the launcher's own driver name first, and a team by its current name (a Sauber rival read "ALFA ROMEO", the game's old internal name).
+
 ## 0.1.0
 First version.
 

@@ -125,6 +125,7 @@ struct View {
     bool signal = false;    // the subject's car reads
     bool paused = false;
     bool spectating = false; // the heart is the watched car's
+    bool hud_hidden = false; // 0.1.1: the game hides its race HUD (menus, replays, cutscenes, photo mode)
     Phase phase = Phase::idle;
     Kind kind = Kind::race;
     float bpm = 0;          // shown (with the beat-to-beat variation)
@@ -154,12 +155,21 @@ inline const char *kind_name(Kind k)
     return k == Kind::practice ? "PRACTICE" : k == Kind::qualifying ? "QUALIFYING" : k == Kind::race ? "RACE" : "TIME TRIAL";
 }
 
-// "ferrari_2026" -> "FERRARI", "red_bull_racing_2025" -> "RED BULL RACING"
+// "ferrari_2026" -> "FERRARI", "red_bull_racing_2025" -> "RED BULL RACING". 0.1.1 (players' reports): the game keeps
+// some teams' old internal names in its keys ("alfa_romeo" for Sauber): those read as the team races now.
 inline std::string team_of_badge(std::string key)
 {
     size_t cut = key.find_last_of('_');
     if (cut != std::string::npos && cut + 1 < key.size() && std::all_of(key.begin() + cut + 1, key.end(), ::isdigit))
         key.resize(cut);
+    static const std::pair<const char *, const char *> kOldNames[] = {
+        {"alfa_romeo", "SAUBER"},          {"alfa_romeo_racing", "SAUBER"}, {"sauber", "SAUBER"},
+        {"toro_rosso", "RACING BULLS"},    {"alphatauri", "RACING BULLS"},  {"alpha_tauri", "RACING BULLS"},
+        {"force_india", "ASTON MARTIN"},   {"racing_point", "ASTON MARTIN"}, {"renault", "ALPINE"},
+        {"lotus", "ALPINE"}};
+    for (const auto &[old_key, name] : kOldNames)
+        if (key == old_key)
+            return name;
     for (char &c : key)
         c = c == '_' ? ' ' : char(std::toupper(static_cast<unsigned char>(c)));
     return key;
@@ -318,6 +328,11 @@ public:
         paused_ = paused;
         bool available = live::available();
         auto session = available ? live::session() : std::nullopt;
+        {
+            // 0.1.1: the monitor and the card follow the game's race HUD (empty when the core can't tell: shown)
+            std::lock_guard lock(view_mutex_);
+            view_.hud_hidden = session && live::hud_visible(*session) == false;
+        }
         // type 0 is no session: the game shows it while a track loads, before session.start
         bool typed = session && (session->have & SWOFTY_LIVE_SHAVE_TYPE) && session->type >= 1;
         note_live(!available ? LiveRead::off : typed ? LiveRead::data : LiveRead::empty);
@@ -696,6 +711,15 @@ private:
     // else the team badge, else the place.
     std::string label_of(int v, std::string *why = nullptr) const
     {
+        // 0.1.1: the launcher's own name for the car's driver first: no matching by place needed
+        if (auto name = live::driver_name(uint32_t(v)); name && !name->empty()) {
+            std::string up = *name;
+            for (char &ch : up)
+                ch = char(std::toupper(static_cast<unsigned char>(ch)));
+            if (why)
+                *why = "the launcher's driver name";
+            return up;
+        }
         if (car_ok_[v] && cars_[v].position > 0) {
             for (uint32_t i = 0; i < 24; i++) {
                 swofty::telemetry::Participant p{};

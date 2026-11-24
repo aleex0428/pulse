@@ -2,7 +2,7 @@
   "schema_version": 1,
   "id": "alexs.pulse",
   "name": "PULSE",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "Alex Sánchez",
   "description": "Feel the driver's heart: a heart rate that rises at the start, in a fight, after contact and under pressure, felt on screen (tunnel vision, heartbeat, G, impacts, fatigue) and shown on a bedside monitor, a TV biometrics card and a report.",
   "license": "MIT",
@@ -14,7 +14,7 @@
   "category": "shaders",
   "compat": {
     "game": "f1_25",
-    "launcher": ">=1.9.10",
+    "launcher": ">=1.10.21",
     "platforms": [
       "steam"
     ]
@@ -128,58 +128,6 @@
       "label": "Fatigue",
       "description": "Late in a long, hard race the picture turns a little softer and grainier.",
       "default": true,
-      "binds": "native"
-    },
-    {
-      "id": "monitor_corner",
-      "type": "choice",
-      "label": "Monitor",
-      "description": "Where the heart monitor sits on screen. Hidden keeps it away until you press the monitor key.",
-      "values": [
-        {
-          "value": "bottom_left",
-          "label": "Bottom left"
-        },
-        {
-          "value": "top_left",
-          "label": "Top left"
-        },
-        {
-          "value": "top_right",
-          "label": "Top right"
-        },
-        {
-          "value": "bottom_right",
-          "label": "Bottom right"
-        },
-        {
-          "value": "hidden",
-          "label": "Hidden"
-        }
-      ],
-      "default": "bottom_left",
-      "binds": "native"
-    },
-    {
-      "id": "monitor_size",
-      "type": "choice",
-      "label": "Monitor size",
-      "description": "How big the monitor, the biometrics card and the report are.",
-      "values": [
-        {
-          "value": "small",
-          "label": "Small"
-        },
-        {
-          "value": "normal",
-          "label": "Normal"
-        },
-        {
-          "value": "large",
-          "label": "Large"
-        }
-      ],
-      "default": "normal",
       "binds": "native"
     },
     {
@@ -302,6 +250,9 @@
   ],
   "postfx_toggle": "{{fx_key}}",
   "operations": {
+    "hud": [
+      "hud/slots.json"
+    ],
     "native": [
       {
         "dll": "native/pulse.dll"

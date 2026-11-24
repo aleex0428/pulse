@@ -15,6 +15,7 @@ Feel the driver's heart. Every driver gets a heart rate that lives with the race
 
 ### Monitor, card and report
 - A **bedside monitor** with the heart rate, the zone, a sweeping ECG trace and the stamina left. **F9** shows and hides it.
+- The monitor and the card sit in the game's own **HUD editor**: move, resize or switch them off there.
 - In a race, a TV-style **DRIVER BIOMETRICS** card compares your heart with your rival's when you fight or touch.
 - At the flag, a **PULSE REPORT**: your zone control score, your peak heart rate and what caused it, your average, the time in each zone and your stamina.
 
@@ -22,8 +23,8 @@ Feel the driver's heart. Every driver gets a heart rate that lives with the race
 Find these in **ADDON SETTINGS**.
 - Effects strength, a Comfort style (no throb, blur, flash or grain), Screen motion (Full, Reduced or Static), and each effect on its own.
 - An optional key to switch the effects off and on while you drive.
-- Where the monitor sits and how big it is, and its key.
+- The monitor key.
 - The card and the report.
 
 ### Needs
-Swofty Launcher 1.9.10 or later. Steam.
+Swofty Launcher 1.10.21 or later. Steam.
